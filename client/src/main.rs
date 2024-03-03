@@ -1,4 +1,4 @@
-use std::net::TcpStream;
+use std::net::{TcpStream, SocketAddr};
 use std::io::{self, prelude::*};
 use std::io::BufReader;
 
@@ -16,6 +16,11 @@ fn process_input() -> Result<String, io::Error> {
 
 
 fn main() {
+    let addrs = [
+        SocketAddr::from(([127, 0, 0, 1], 8080)),
+        SocketAddr::from(([127, 0, 0, 1], 8081)),
+    ];
+    let mut stream = TcpStream::connect(&addrs[..]).unwrap();
     loop{
         let input = match process_input() {
             Ok(input) => input,
@@ -24,10 +29,24 @@ fn main() {
                 continue;
             }
         };
+        
+        if let Err(e) = stream.write_all(input.as_bytes()).and_then(|_| stream.flush()) {
+            eprintln!("server down: {e}");
+            println!("attempting to connect to another server");
+            stream = match TcpStream::connect(&addrs[..]) {
+                Ok(stream) => {
+                    println!("connected at {}", stream.peer_addr().unwrap());
+                    stream
+                }
+                Err(e) => {
+                    eprintln!("couldn't connect to both servers: {e}");
+                    return;
+                }
+            };
 
-        let mut stream = TcpStream::connect("localhost:3000").unwrap();
-        stream.write_all(input.as_bytes()).unwrap();
-        stream.flush().unwrap();
+            stream.write_all(input.as_bytes()).unwrap();
+            stream.flush().unwrap();
+        }
 
         let mut buf_reader = BufReader::new(&stream);
         let mut response = String::new();

@@ -26,10 +26,25 @@ fn main() {
 }
 
 fn handle_connection(mut stream: TcpStream) {
-    let buf_reader = BufReader::new(&mut stream);
-    let request_line = buf_reader.lines().next().unwrap().unwrap();
+    loop {
+        let mut line = String::new();
+        {
+            let mut buf_reader = BufReader::new(&mut stream);
+            match buf_reader.read_line(&mut line) {
+                Ok(0) => {
+                    break;
+                }
+                Ok(_) => {
+                    let line = line.trim_end(); 
+                    println!("client: {}", line);
+                }
+                Err(e) => {
+                    eprintln!("failed to read from connection: {}", e);
+                    break;
+                }
+            }
+        }
 
-    println!("msg: {request_line}"); 
-
-    stream.write_all(request_line.as_bytes()).unwrap();
+        stream.write_all(line.as_bytes()).unwrap();
+    }
 }
