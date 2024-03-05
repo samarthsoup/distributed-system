@@ -43,7 +43,6 @@ fn main() {
                     return;
                 }
             };
-
             stream.write_all(input.as_bytes()).unwrap();
             stream.flush().unwrap();
         }
@@ -51,8 +50,27 @@ fn main() {
         let mut buf_reader = BufReader::new(&stream);
         let mut response = String::new();
 
-        buf_reader.read_line(&mut response).unwrap();
+        if let Err(_) = buf_reader.read_line(&mut response) {
+            stream = match TcpStream::connect(&addrs[..]) {
+                Ok(stream) => {
+                    println!("connected at {}", stream.peer_addr().unwrap());
+                    stream
+                }
+                Err(e) => {
+                    eprintln!("couldn't connect to both servers: {e}");
+                    return;
+                }
+            };
+            let mut buf_reader = BufReader::new(&stream);
+            match buf_reader.read_line(&mut response) {
+                Ok(_) => println!("server: {}", response),
+                Err(e) if e.kind() == io::ErrorKind::WouldBlock || e.kind() == io::ErrorKind::TimedOut => {
+                    println!("server: {}", response);
+                },
+                Err(e) => eprintln!("Error reading from server: {}", e),
+            }
+        };
 
-        println!("server: {response}");
+       
     }
 }
