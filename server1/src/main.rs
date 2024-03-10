@@ -27,6 +27,12 @@ fn main() {
 }
 
 fn handle_connection_client(mut stream: TcpStream) {
+    let hello_message = "Hello, client!\n";
+    if let Err(e) = stream.write_all(hello_message.as_bytes()) {
+        eprintln!("failed to write to connection: {}", e);
+        return;
+    }
+
     loop {
         let mut line = String::new();
         {
